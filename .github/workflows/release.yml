@@ -1,0 +1,159 @@
+# ---------------------------------------------------------------------------------
+# Release & Deploy Workflow for Python Package
+#
+# This GitHub Actions workflow automates the process of releasing and deploying 
+# a Python package to PyPI using semantic versioning.
+# ---------------------------------------------------------------------------------
+
+name: Release
+
+on:
+  push:
+    branches: 
+      - main
+
+# Least privileged permissions across all jobs
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    # Prevents multiple release workflows from running simultaneously on the same branch
+    concurrency:
+      group: ${{ github.workflow }}-release-${{ github.ref_name }}
+      cancel-in-progress: false
+    
+    # The 'released' output indicates whether a new release was created
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+
+    # The release job needs write access to repository contents to create tags, releases, and push version bumps
+    permissions:
+      contents: write
+
+    steps:
+      # 1. Clone the repository
+      - name: Setup | Checkout Repository on Release Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      # 2. Force the release branch to match the commit that triggered the workflow
+      - name: Setup | Force release branch to be at workflow sha
+        run: |
+          git reset --hard ${{ github.sha }}
+
+      # 3. Ensure the local branch is in sync with the upstream to avoid releasing from outdated code
+      # https://python-semantic-release.readthedocs.io/en/latest/configuration/automatic-releases/github-actions.html#examples
+      - name: Evaluate | Verify upstream has NOT changed
+        shell: bash
+        run: |
+          set +o pipefail
+
+          UPSTREAM_BRANCH_NAME="$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)"
+          printf '%s\n' "Upstream branch name: $UPSTREAM_BRANCH_NAME"
+
+          set -o pipefail
+
+          if [ -z "$UPSTREAM_BRANCH_NAME" ]; then
+              printf >&2 '%s\n' "::error::Unable to determine upstream branch name!"
+              exit 1
+          fi
+
+          git fetch "${UPSTREAM_BRANCH_NAME%%/*}"
+
+          if ! UPSTREAM_SHA="$(git rev-parse "$UPSTREAM_BRANCH_NAME")"; then
+              printf >&2 '%s\n' "::error::Unable to determine upstream branch sha!"
+              exit 1
+          fi
+
+          HEAD_SHA="$(git rev-parse HEAD)"
+
+          if [ "$HEAD_SHA" != "$UPSTREAM_SHA" ]; then
+              printf >&2 '%s\n' "[HEAD SHA] $HEAD_SHA != $UPSTREAM_SHA [UPSTREAM SHA]"
+              printf >&2 '%s\n' "::error::Upstream has changed, aborting release..."
+              exit 1
+          fi
+
+          printf '%s\n' "Verified upstream branch has not changed, continuing with release..."
+      
+      # 4. Set up Python environment
+      - name: Setup | Install Python interpreter
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # 5. Install Poetry
+      - name: Setup | Install Poetry
+        uses: abatilo/actions-poetry@v4
+        id: install-poetry
+        with:
+          poetry-version: "2.1.3"
+
+      # 6. Cache Poetry virtual environment to speed up subsequent runs
+      - name: Setup | Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ steps.install-poetry.outputs.poetry-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      # 7. Install project dependencies, including the "dev" group
+      - name: Setup | Install project dependencies
+        run: poetry install --with dev
+
+      # 8. Perform semantic release: version bump, changelog, git tag & GitHub release
+      - name: Action | Semantic Version Release
+        id: release
+        uses: python-semantic-release/python-semantic-release@v9.21.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: "github-actions"
+          git_committer_email: "actions@users.noreply.github.com"
+
+      # 9. Publish release assets to the GitHub Release page if a new release was made
+      - name: Publish | Upload to GitHub Release Assets
+        uses: python-semantic-release/publish-action@v9.21.1
+        if: steps.release.outputs.released == 'true'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.release.outputs.tag }}
+
+      # 10. Upload distribution files (e.g., wheel, sdist) as GitHub Actions artifacts
+      - name: Upload | Distribution Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.release.outputs.released == 'true'
+        with:
+          name: distribution-artifacts
+          path: dist
+          if-no-files-found: error
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: release
+    if: ${{ needs.release.outputs.released == 'true' }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # 1. Download the distribution artifacts generated in the release job
+      - name: Setup | Download Build Artifacts
+        uses: actions/download-artifact@v4
+        id: artifact-download
+        with:
+          name: distribution-artifacts
+          path: dist
+
+      # 2. Publish the distribution artifacts to the Python Package Index (PyPI)
+      - name: Publish | Upload package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          print-hash: true
+          verbose: true

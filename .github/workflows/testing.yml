@@ -1,0 +1,80 @@
+name: Testing
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    steps:
+      # 1. Clone the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # 3. Install Poetry
+      - name: Install Poetry
+        run: python -m pip install poetry==2.1.3 --no-cache-dir
+
+      # 4. Cache Poetry virtual environment to speed up subsequent runs
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      # 5. Install project dependencies, excluding the "special" group
+      - name: Install dependencies
+        run: poetry install --without special --with dev
+
+      # 6. Run ruff for linting
+      - name: Lint checking
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: 0.11.10
+          args: "check --output-format=github"
+          src: "./cache_simulator ./tests"
+
+      # 7. Run ruff for format checking
+      - name: Format checking
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: 0.11.10
+          args: "format --check"
+          src: "./cache_simulator ./tests"
+
+      # 8. Run mypy for static type checking
+      - name: Run mypy
+        run: poetry run mypy --config-file=pyproject.toml $(find . -name "*.py" -o -name "*.pyi")
+
+      # 9. Run pytest for unit tests
+      - name: Run pytest
+        run: poetry run pytest
+
+      # 10. ...
+      - name: Initialize detect-secrets baseline
+        run: |
+          if [ ! -f .secrets.baseline ]; then
+            poetry run detect-secrets scan > .secrets.baseline
+          fi
+
+      # 10. Run detect-secrets to detect secrets
+      - name: Run detect-secrets
+        run: poetry run detect-secrets scan --baseline .secrets.baseline
+
+      # 11. Run bandit for security analysis
+      - name: Run bandit
+        run: poetry run bandit -r . -c pyproject.toml

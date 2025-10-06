@@ -1,0 +1,15 @@
+[general]
+# Enable contrib rules (comma-separated list)
+contrib=contrib-title-conventional-commits
+
+[contrib-title-conventional-commits]
+# Define allowed commit types for Conventional Commits (comma-separated list)
+types=fix,feat,chore,docs,style,refactor,perf,test,revert,ci,build
+
+[title-max-length]
+# Set the maximum length for commit message titles
+line-length=50
+
+[body-max-line-length]
+# Set the maximum length for lines in the commit message body
+line-length=72
