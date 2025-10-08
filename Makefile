@@ -34,14 +34,14 @@ validate:
 ## Lint using ruff (use `make format` to do formatting)
 .PHONY: lint
 lint:
-	ruff format --check
-	ruff check
+	poetry run ruff format --check
+	poetry run ruff check
 
 ## Format source code with ruff
 .PHONY: format
 format:
-	ruff check --fix
-	ruff format
+	poetry run ruff check --fix
+	poetry run ruff format
 
 ## Install pre-commit hooks
 .PHONY: hooks
