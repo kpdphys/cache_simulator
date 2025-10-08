@@ -8,6 +8,12 @@ repos:
       - id: check-toml
       - id: name-tests-test
         args: ["--pytest-test-first"]
+        exclude: |
+          (?x)(
+              ^tests/.*/conftest\.py$|
+              ^tests/.*/__init__\.py$|
+              ^tests/.*/mocks\.py$
+          )
 
   # 2. detect-secrets: Scans for secrets in the codebase
   - repo: https://github.com/Yelp/detect-secrets
@@ -19,7 +25,7 @@ repos:
 
   # 3. ruff-pre-commit: Linting and formatting for Python code using ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.3
+    rev: v0.14.0
     hooks:
       - id: ruff-check
         types_or: [ python, pyi ]
@@ -33,7 +39,9 @@ repos:
       - id: mypy
         additional_dependencies:
           - pytest==8.4.2
-        args: ["--config-file=pyproject.toml"]
+        args: 
+          - "--config-file=pyproject.toml"
+          - "--explicit-package-bases"
         language_version: python3.13
 
   # 5. bandit: Security analysis for Python code

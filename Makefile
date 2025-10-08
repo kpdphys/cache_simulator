@@ -51,6 +51,11 @@ hooks:
 	poetry run pre-commit install
 	poetry run pre-commit install -f --hook-type commit-msg --hook-type pre-commit
 
+## Run mypy checking
+.PHONY: mypy
+mypy:
+	poetry run pre-commit run mypy --all-files
+
 ## Generate baseline file for detect-secrets
 .PHONY: scan
 scan:
@@ -59,7 +64,11 @@ scan:
 ## Run tests
 .PHONY: test
 test:
-	python -m pytest
+	python -m pytest --cov
+
+.PHONY: precommit
+precommit:
+	poetry run pre-commit run -a -v
 
 ## Set up Python interpreter environment
 .PHONY: create_environment

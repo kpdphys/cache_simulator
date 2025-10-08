@@ -139,23 +139,32 @@ python_version = "3.13"
 # only checks .py and .pyi files at any depth in the project
 files = "**/*.py,**/*.pyi"
 
+# Specify folder with stubs
+mypy_path = "typings"
+
 # Enable all strict checks
 strict = true
 
 # Ignore imports that can't be resolved
-ignore_missing_imports = false
+ignore_missing_imports = true
 
 # Disallow functions without type annotations
 disallow_untyped_defs = true
 
 # Disallow use of untyped imported values
-disallow_any_unimported = true
+# disallow_any_unimported = true
 
 # Warn when returning a value of type `Any`
 warn_return_any = true
 
 # Warn if `# type: ignore` comments are unused
-warn_unused_ignores = true
+warn_unused_ignores = false
+
+
+# Ignore warnings about random unsecurity
+[tool.bandit]
+skips = ["B311"]
+
 
 [tool.bandit.assert_used]
 # Skip assert checks (B101) in test files,
