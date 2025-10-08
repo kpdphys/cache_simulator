@@ -62,7 +62,7 @@ jobs:
 
       # 9. Run pytest for unit tests
       - name: Run pytest
-        run: poetry run pytest
+        run: poetry run python -m pytest
 
       # 10. ...
       - name: Initialize detect-secrets baseline
