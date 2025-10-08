@@ -136,11 +136,14 @@ upload_to_vcs_release = false
 python_version = "3.13"
 
 # Specify which files to check. This ensures that mypy
-# only checks .py and .pyi files at any depth in the project
-files = "**/*.py,**/*.pyi"
+# only checks .py files at any depth in the project
+files = "**/*.py"
 
 # Specify folder with stubs
 mypy_path = "typings"
+
+# Exclude stub directory from type checking
+exclude = ["^typings/"]
 
 # Enable all strict checks
 strict = true

@@ -70,6 +70,10 @@ test:
 precommit:
 	poetry run pre-commit run -a -v
 
+.PHONY: examples
+examples:
+	poetry run python -m examples.cache_dataset.demo_cache_dataset
+
 ## Set up Python interpreter environment
 .PHONY: create_environment
 create_environment:

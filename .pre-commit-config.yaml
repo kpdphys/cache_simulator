@@ -41,6 +41,7 @@ repos:
           - pytest==8.4.2
         args: 
           - "--config-file=pyproject.toml"
+        exclude: ^typings/
         language_version: python3.13
 
   # 5. bandit: Security analysis for Python code
