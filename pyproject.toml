@@ -160,6 +160,9 @@ warn_return_any = true
 # Warn if `# type: ignore` comments are unused
 warn_unused_ignores = false
 
+# Resolve module name conflicts when same directory names exist in different packages
+explicit_package_bases = true
+
 
 # Ignore warnings about random unsecurity
 [tool.bandit]
